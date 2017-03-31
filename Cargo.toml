@@ -1,0 +1,6 @@
+[package]
+name = "trivial-pb-dump"
+version = "0.1.0"
+authors = ["Julian Squires <julian@cipht.net>"]
+
+[dependencies]
