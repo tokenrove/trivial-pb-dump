@@ -25,13 +25,13 @@ enum SysExits {
 fn read_leb128<T: Iterator<Item=u8>>(bytes: &mut T) -> Option<u64>
 {
     let mut shift = 0;
-    let mut acc = 0_u64;
-    loop {
-        let b = match bytes.next() { None => return None, Some(b) => b };
+    let mut acc = 0;
+    for b in bytes {
         acc |= ((b & 0x7f) as u64) << shift;
         shift += 7;
         if 0 == b & 0x80 { return Some(acc) }
     }
+    return None
 }
 
 macro_rules! they_fucked_up {
@@ -48,7 +48,7 @@ fn dump_varint<T: Iterator<Item=u8>>(bytes: &mut T)
         None => they_fucked_up!("bad varint"),
         Some(x) => x
     };
-    println!("varint {}", x)
+    println!("varint {}", x);
 }
 
 fn dump_fixed32<T: Iterator<Item=u8>>(bytes: &mut T)
@@ -63,11 +63,6 @@ fn dump_fixed64<T: Iterator<Item=u8>>(bytes: &mut T)
              bytes.take(8).fold(0_u64, |acc, b| (acc<<8) | (b as u64)));
 }
 
-fn all_printable(s: &Vec<u8>) -> bool {
-    for &b in s.iter() { if b < 0x20 || b > 0x7f { return false } }
-    true
-}
-
 fn dump_string<T: Iterator<Item=u8>>(bytes: &mut T)
 {
     let len = match read_leb128(bytes) {
@@ -75,11 +70,11 @@ fn dump_string<T: Iterator<Item=u8>>(bytes: &mut T)
         Some(len) => len
     };
     print!("{}-byte string: ", len);
-    let s = bytes.take(len as usize).collect();
-    if all_printable(&s) {
+    let s = bytes.take(len as usize).collect::<Vec<_>>();
+    if s.iter().all(|&b| b >= 0x20 && b <= 0x7f) {
         print!("{}", String::from_utf8(s).unwrap())
     } else {
-        for b in s.iter() { print!("{:x} ", b) }
+        for b in s { print!("{:x} ", b) }
     }
     println!()
 }
@@ -87,16 +82,14 @@ fn dump_string<T: Iterator<Item=u8>>(bytes: &mut T)
 fn decode_one<T: Iterator<Item=u8>>(bytes: &mut T)
 {
     let mut max_field_seen = 0;
-    loop {
-        let b = match bytes.next() { None => return, Some(b) => b };
-
+    while let Some(b) = bytes.next() {
         let field = b >> 3;
         let tag = b & 7;
         if field < max_field_seen {
             println!("Warning: message has out-of-order fields ({} < {})",
-                     field, max_field_seen)
+                     field, max_field_seen);
         } else {
-            max_field_seen = field
+            max_field_seen = field;
         }
 
         print!("{}: ", field);
@@ -131,23 +124,19 @@ fn main() {
         exit(SysExits::Usage as i32)
     }
 
-    let mut stdin = std::io::stdin();
+    let stdin = std::io::stdin();
+    let mut bytes = stdin.lock().bytes().map(|x| x.unwrap()).peekable();
     if mode == Mode::Single {
-        let mut buf = Vec::new();
-        stdin.read_to_end(&mut buf).unwrap();
-        decode_one(&mut buf.into_iter());
+        decode_one(&mut bytes);
         exit(SysExits::Ok as i32)
     }
 
-    let mut bytes = stdin.lock().bytes().map(|x| x.unwrap()).peekable();
     loop {
         if None == bytes.peek() { exit(SysExits::Ok as i32) }
         let len = match read_leb128(&mut bytes) {
             None => they_fucked_up!("bad length on message"),
             Some(len) => len
         };
-        let mut buf = Vec::new();
-        for _ in 0..len { buf.push(bytes.next().unwrap()) }
-        decode_one(&mut buf.into_iter())
+        decode_one(&mut bytes.by_ref().take(len as usize))
     }
 }
