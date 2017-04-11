@@ -82,7 +82,7 @@ fn dump_string<T: Iterator<Item=u8>>(bytes: &mut T)
 fn decode_one<T: Iterator<Item=u8>>(bytes: &mut T)
 {
     let mut max_field_seen = 0;
-    while let Some(b) = bytes.next() {
+    while let Some(b) = read_leb128(bytes) {
         let field = b >> 3;
         let tag = b & 7;
         if field < max_field_seen {
