@@ -1,4 +1,14 @@
 [root]
 name = "trivial-pb-dump"
 version = "0.1.0"
+dependencies = [
+ "sysexits 0.1.0 (git+https://github.com/tokenrove/sysexits-rs.git)",
+]
 
+[[package]]
+name = "sysexits"
+version = "0.1.0"
+source = "git+https://github.com/tokenrove/sysexits-rs.git#73f1abf1a836208c1cc74938a126477884b06751"
+
+[metadata]
+"checksum sysexits 0.1.0 (git+https://github.com/tokenrove/sysexits-rs.git)" = "<none>"

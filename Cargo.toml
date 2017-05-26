@@ -4,3 +4,4 @@ version = "0.1.0"
 authors = ["Julian Squires <julian@cipht.net>"]
 
 [dependencies]
+sysexits = { git = "https://github.com/tokenrove/sysexits-rs.git" }
